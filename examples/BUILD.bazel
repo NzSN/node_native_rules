@@ -1,0 +1,8 @@
+load("//:natives/node_binary.bzl", "node_binary")
+
+node_binary(
+    name = "example",
+    srcs = ["example.cc"],
+    copts = ["-fno-exceptions"],
+    node_modules = "//:node_modules"
+)

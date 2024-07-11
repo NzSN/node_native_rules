@@ -1,0 +1,2 @@
+startup
+build --noincompatible_sandbox_hermetic_tmp
