@@ -10,7 +10,7 @@ def make_binding_gyp(ctx):
         \"include_dirs\": [ "<!@(node -p \\"require('node-addon-api').include\\")" ]
     }}]
 }}""".format(ctx.attr.name,
-            ",".join(["\"../{}\"".format(src.path) for src in ctx.files.srcs]),
+            ",".join(["\"{}\"".format(src.path) for src in ctx.files.srcs]),
             ",".join([flag for flag in ctx.attr.copts]),
             ",".join([flag for flag in ctx.attr.copts]),)
     binding_gyp = ctx.actions.declare_file("binding.gyp")
@@ -19,7 +19,6 @@ def make_binding_gyp(ctx):
     return binding_gyp
 
 def _node_binary_impl(ctx):
-
     inputs_depset = []
     node_modules = ctx.attr.node_modules
     inputs_depset = node_modules[DefaultInfo].files.to_list() + \
@@ -32,19 +31,15 @@ def _node_binary_impl(ctx):
     node_module_path = node_module_path[0:node_module_path.rfind("node_modules")+12]
 
     compile_command = """
-    ln -s $(pwd)/{} {}/node_modules
-    mv $(pwd)/{} {};
-    cd {};
+    ln -s {} node_modules
+    mv {} .;
     ./node_modules/node-gyp/bin/node-gyp.js configure
     ./node_modules/node-gyp/bin/node-gyp.js build
-    cp build/Release/{}.node {}
+    cp build/Release/{}.node {};
     """.format(node_module_path,
-               paths.dirname(ctx.files.srcs[0].path),
                binding_gyp.path,
-               paths.dirname(ctx.files.srcs[0].path),
-               paths.dirname(ctx.files.srcs[0].path),
                ctx.attr.name,
-               "../" + node_binary.path)
+               node_binary.path)
 
     ctx.actions.run_shell(
         inputs = ctx.files.srcs + inputs_depset + [binding_gyp],
