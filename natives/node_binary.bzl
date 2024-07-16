@@ -54,7 +54,7 @@ def _node_binary_impl(ctx):
 node_binary = rule(
     implementation = _node_binary_impl,
     attrs = {
-        "srcs": attr.label_list(allow_files = [".c", "cc", "cpp"]),
+        "srcs": attr.label_list(allow_files = [".c", "cc", "cpp", "h"]),
         "copts": attr.string_list(),
         "node_modules": attr.label()
     }
