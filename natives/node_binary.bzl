@@ -33,7 +33,6 @@ def _node_binary_impl(ctx):
         includes += dep[CcInfo].compilation_context.includes.to_list()
       if OutputGroupInfo in dep:
           if "compilation_prerequisites_INTERNAL_" in dep[OutputGroupInfo]:
-              print(dep[CcInfo].compilation_context)
               deps += dep[OutputGroupInfo].compilation_prerequisites_INTERNAL_.to_list()
 
 
