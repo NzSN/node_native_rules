@@ -12,7 +12,7 @@ def make_binding_gyp(ctx, includes):
 }}""".format(ctx.attr.name,
             ",".join(["\"{}\"".format(src.path) for src in ctx.files.srcs]),
              ctx.attr.copts,
-             ctx.attr.include_dirs +  [ "<!@(node -p \"require('node-addon-api').include\")" ] + includes,)
+             ctx.attr.include_dirs + ["external/abseil-cpp~"] + [ "<!@(node -p \"require('node-addon-api').include\")" ] + includes,)
     binding_gyp = ctx.actions.declare_file("binding.gyp")
     ctx.actions.write(binding_gyp, content)
 
@@ -31,6 +31,11 @@ def _node_binary_impl(ctx):
       if CcInfo in dep:
         deps += dep[CcInfo].compilation_context.headers.to_list() + dep[DefaultInfo].files.to_list()
         includes += dep[CcInfo].compilation_context.includes.to_list()
+      if OutputGroupInfo in dep:
+          if "compilation_prerequisites_INTERNAL_" in dep[OutputGroupInfo]:
+              print(dep[CcInfo].compilation_context)
+              deps += dep[OutputGroupInfo].compilation_prerequisites_INTERNAL_.to_list()
+
 
     node_binary = ctx.actions.declare_file(
         ctx.attr.name + ".node")
@@ -62,7 +67,7 @@ def _node_binary_impl(ctx):
 node_binary = rule(
     implementation = _node_binary_impl,
     attrs = {
-        "srcs": attr.label_list(allow_files = [".c", ".cc", ".cpp", ".h"]),
+        "srcs": attr.label_list(allow_files = [".c", ".cc", ".cpp", ".h", ".so"]),
         "copts": attr.string_list(),
         "node_modules": attr.label(),
         "include_dirs": attr.string_list(),
