@@ -1,6 +1,6 @@
 load("@bazel_skylib//lib:paths.bzl", "paths")
 
-def make_binding_gyp(ctx, includes):
+def make_binding_gyp(ctx, includes, static_libs):
     content ="""{{
     \"targets\": [{{
         \"target_name\": \"{}\",
@@ -8,11 +8,13 @@ def make_binding_gyp(ctx, includes):
         \"cflags!\": [],
         \"ccflags_cc!\": {},
         \"include_dirs\": {},
+        \"libraries\": {} ,
     }}]
 }}""".format(ctx.attr.name,
             ",".join(["\"{}\"".format(src.path) for src in ctx.files.srcs]),
              ctx.attr.copts,
-             ctx.attr.include_dirs + ["external/abseil-cpp~"] + [ "<!@(node -p \"require('node-addon-api').include\")" ] + includes,)
+             ctx.attr.include_dirs + ["external/abseil-cpp~"] + [ "<!@(node -p \"require('node-addon-api').include\")" ] + includes,
+             ["<(module_root_dir)/" + lib.path for lib in static_libs])
     binding_gyp = ctx.actions.declare_file("binding.gyp")
     ctx.actions.write(binding_gyp, content)
 
@@ -26,20 +28,20 @@ def _node_binary_impl(ctx):
 
     # Collect transitive sources and headers
     includes = []
+    static_libs = []
     deps = []
     for dep in ctx.attr.deps:
       if CcInfo in dep:
         deps += dep[CcInfo].compilation_context.headers.to_list() + dep[DefaultInfo].files.to_list()
         includes += dep[CcInfo].compilation_context.includes.to_list()
-      if OutputGroupInfo in dep:
-          if "compilation_prerequisites_INTERNAL_" in dep[OutputGroupInfo]:
-              print(dep[CcInfo].linking_context.linker_inputs.to_list()[1].libraries[0].dynamic_library)
-              deps += dep[OutputGroupInfo].compilation_prerequisites_INTERNAL_.to_list()
 
+        for link in dep[CcInfo].linking_context.linker_inputs.to_list():
+            for lib in link.libraries:
+                static_libs += [lib.pic_static_library]
 
     node_binary = ctx.actions.declare_file(
         ctx.attr.name + ".node")
-    binding_gyp = make_binding_gyp(ctx, includes)
+    binding_gyp = make_binding_gyp(ctx, includes, static_libs)
     node_module_path = node_modules[DefaultInfo].files.to_list()[0].path
     node_module_path = node_module_path[0:node_module_path.rfind("node_modules")+12]
 
@@ -55,7 +57,7 @@ def _node_binary_impl(ctx):
                node_binary.path)
 
     ctx.actions.run_shell(
-        inputs = ctx.files.srcs + inputs_depset + [binding_gyp] + deps,
+        inputs = ctx.files.srcs + inputs_depset + [binding_gyp] + deps + static_libs,
         outputs = [node_binary],
         command = compile_command,
         use_default_shell_env = True,
